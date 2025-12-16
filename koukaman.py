@@ -12,20 +12,6 @@ CELL_SIZE = 30  # セルサイズ
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
-def check_bound(obj_rct: pg.Rect) -> tuple[bool, bool]:
-    """
-    オブジェクトが画面内or画面外を判定し，真理値タプルを返す関数
-    引数：こうかまんや敵などのRect
-    戻り値：横方向，縦方向のはみ出し判定結果（画面内：True／画面外：False）
-    """
-    yoko, tate = True, True
-    if obj_rct.left < 0 or WIDTH < obj_rct.right:
-        yoko = False
-    if obj_rct.top < 0 or HEIGHT < obj_rct.bottom:
-        tate = False
-    return yoko, tate
-
-
 class Pacman(pg.sprite.Sprite):
     """
     ゲームキャラクターに関するクラス
@@ -51,7 +37,6 @@ class Pacman(pg.sprite.Sprite):
         self.grid_x, self.grid_y = xy
         self.rect.center = (self.grid_x * CELL_SIZE + CELL_SIZE//2, 
                            self.grid_y * CELL_SIZE + CELL_SIZE//2)
-        self.speed = 5
         self.move_interval_ms = 120
         self.last_move_time = 0
     
@@ -225,8 +210,6 @@ def main():
     enemies = pg.sprite.Group()
     enemies.add(Enemy(maze.data, (10, 10), "かまトゥ.png"))
     enemies.add(Enemy(maze.data, (12, 10), "ぱっちぃ.png"))
-    
-    koukaman_group = pg.sprite.GroupSingle(koukaman)
 
     tmr = 0
     clock = pg.time.Clock()
@@ -236,6 +219,10 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
+            if event.type == pg.KEYDOWN and event.key == pg.K_d:
+                koukaman.move_interval_ms = 10
+            if event.type == pg.KEYUP and event.key == pg.K_d:
+                koukaman.move_interval_ms = 120
         
         screen.fill(bg_color)
         maze.draw(screen)
