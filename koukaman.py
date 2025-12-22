@@ -1,4 +1,3 @@
-import math
 import os
 import random
 import sys
@@ -57,7 +56,7 @@ class Pacman(pg.sprite.Sprite):
             screen.blit(self.image, self.rect)
             return
         
-        for k, mv in __class__.delta.items():
+        for k, mv in self.delta.items():
             if key_lst[k]:
                 new_grid_x = self.grid_x + mv[0]
                 new_grid_y = self.grid_y + mv[1]
@@ -70,9 +69,6 @@ class Pacman(pg.sprite.Sprite):
                         self.grid_y = new_grid_y
                         self.rect.center = (self.grid_x * CELL_SIZE + CELL_SIZE//2,
                                           self.grid_y * CELL_SIZE + CELL_SIZE//2)
-                        # クッキーを食べる
-                        if self.maze[self.grid_y][self.grid_x] == 0:
-                            self.maze[self.grid_y][self.grid_x] = 2
                 break
         
         screen.blit(self.image, self.rect)
@@ -211,7 +207,6 @@ def main():
     enemies.add(Enemy(maze.data, (10, 10), "かまトゥ.png"))
     enemies.add(Enemy(maze.data, (12, 10), "ぱっちぃ.png"))
 
-    tmr = 0
     clock = pg.time.Clock()
     
     while True:
@@ -219,17 +214,20 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
-            if event.type == pg.KEYDOWN and event.key == pg.K_d:
-                koukaman.move_interval_ms = 10
-            if event.type == pg.KEYUP and event.key == pg.K_d:
+            if event.type == pg.KEYDOWN and event.key == pg.K_d:  # Dキーが押されたら
+                if score.value >= 300:  # スコア300以上だったら
+                    score.add(-300)  # スコア300使用してダッシュ
+                    koukaman.move_interval_ms = 10
+            if event.type == pg.KEYUP and event.key == pg.K_d:  # Dキーが離されたら通常スピード
                 koukaman.move_interval_ms = 120
         
         screen.fill(bg_color)
         maze.draw(screen)
         
         # こうかまんがクッキーを食べたらスコア加算
-        if maze.data[koukaman.grid_y][koukaman.grid_x] == 2:
+        if maze.data[koukaman.grid_y][koukaman.grid_x] == 0:
             score.add(10)
+            maze.data[koukaman.grid_y][koukaman.grid_x] = 2
         
         # 敵との衝突判定
         for enemy in enemies:
@@ -259,7 +257,6 @@ def main():
         score.update(screen)
         
         pg.display.update()
-        tmr += 1
         clock.tick(50)
 
 
