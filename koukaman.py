@@ -22,6 +22,10 @@ class Pacman(pg.sprite.Sprite):
         pg.K_RIGHT: (+1, 0),
     }
 
+
+    
+        
+
     def __init__(self, maze: list, xy: tuple[int, int]):
         """
         こうかとん画像Surfaceを生成する
@@ -36,15 +40,77 @@ class Pacman(pg.sprite.Sprite):
         self.grid_x, self.grid_y = xy
         self.rect.center = (self.grid_x * CELL_SIZE + CELL_SIZE//2, 
                            self.grid_y * CELL_SIZE + CELL_SIZE//2)
+        self.speed = 5
         self.move_interval_ms = 120
         self.last_move_time = 0
-    
+        self.direction = (1,0)
+        self.fry_cooldown = 200
+        self.last_fry = -200
+        self.fry_count = 3
+        icon_6 = pg.image.load("fig/6.png")
+        self.fry_icon = pg.transform.smoothscale(icon_6, (24, 24))
+        self.fry_icon_margin = 10
+        self.fry_icon_spacing = 8
+
     def can_move_now(self) -> bool:
         now = pg.time.get_ticks()
         if now - self.last_move_time >= self.move_interval_ms:
             self.last_move_time = now
             return True
         return False
+    
+    def fry(self,screen:pg.Surface):
+        """
+        こうかとんが飛行する関数
+        引数1 screen:画面Surface
+        """
+        now = pg.time.get_ticks() # 現在フレームを取得
+        if now - self.last_fry < self.fry_cooldown: # 飛行のクールタイムより短かったら
+            screen.blit(self.image, self.rect)
+            return
+        self.last_fry = now # 飛行時間を更新
+
+        origin_x, origin_y = self.grid_x, self.grid_y # 元の位置を記憶
+        dx, dy = self.direction # 動く方向を記憶
+        target_x = self.grid_x + dx*2
+        target_y = self.grid_y + dy*2
+        
+        row = len(self.maze)         # 行数
+        columns = len(self.maze[0])      # 列数
+
+        if not (0 <= target_y < row and 0 <= target_x < columns): # 2マス先が範囲外なら元の位置に戻す
+            self.grid_x, self.grid_y = origin_x, origin_y
+        else:
+            while True: # 壁以外まで移動
+                cell = self.maze[target_y][target_x]
+                if cell in (1, 3):  # 壁なら一マス追加
+                    target_x += dx
+                    target_y += dy
+                    if not (0 <= target_y < row and 0 <= target_x < columns): # 範囲外に出たら元の位置に戻る
+                        self.grid_x, self.grid_y = origin_x, origin_y
+                        break
+                    continue
+                self.grid_x, self.grid_y = target_x, target_y # 更新する位置の設定
+                break
+        self.fry_count -= 1
+        self.rect.center = (self.grid_x * CELL_SIZE + CELL_SIZE // 2,
+                            self.grid_y * CELL_SIZE + CELL_SIZE // 2)  
+        # クッキーを食べる
+        if self.maze[self.grid_y][self.grid_x] == 0:
+            self.maze[self.grid_y][self.grid_x] = 2
+        screen.blit(self.image, self.rect)
+        
+    def draw_fry_icons(self, screen: pg.Surface):
+        """
+        残り飛行回数を表示する関数
+        引数1 screen:画面Surface
+        """
+        icon_w = self.fry_icon.get_width()
+        icon_h = self.fry_icon.get_height()
+        x = self.fry_icon_margin
+        y = HEIGHT - self.fry_icon_margin - icon_h
+        for i in range(self.fry_count):
+            screen.blit(self.fry_icon, (x + i * (icon_w + self.fry_icon_spacing), y))
 
     def update(self, key_lst: list[bool], screen: pg.Surface):
         """
@@ -60,7 +126,7 @@ class Pacman(pg.sprite.Sprite):
             if key_lst[k]:
                 new_grid_x = self.grid_x + mv[0]
                 new_grid_y = self.grid_y + mv[1]
-                
+                self.direction = mv # 向きの設定
                 # 迷路の範囲内かチェック
                 if 0 <= new_grid_y < len(self.maze) and 0 <= new_grid_x < len(self.maze[0]):
                     # 壁でなければ移動（1:壁、3:外枠）
@@ -253,6 +319,7 @@ def main():
     koukaman_group = pg.sprite.GroupSingle(koukaman)
 
     clock = pg.time.Clock()
+    fry_count = 3
     
     while True:
         key_lst = pg.key.get_pressed()
@@ -266,6 +333,12 @@ def main():
             if event.type == pg.KEYUP and event.key == pg.K_d:  # Dキーが離されたら通常スピード
                 koukaman.move_interval_ms = 120
         
+            elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_f:
+                    if  fry_count > 0:
+                        koukaman.fry(screen)
+                        fry_count -= 1
+                    
         screen.fill(bg_color)
         maze.draw(screen)
 
@@ -303,6 +376,7 @@ def main():
         koukaman.update(key_lst, screen)
         enemies.update()
         enemies.draw(screen)
+        koukaman.draw_fry_icons(screen)
         score.update(screen)
         
         pg.display.update()
